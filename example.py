@@ -1,7 +1,6 @@
 import numpy as np
 from MLP_module import MLP
 import matplotlib.pyplot as plt
-from keras.backend import clear_session
 
 
 ###############################################################################
@@ -42,9 +41,6 @@ ME, ME_CI_low, ME_CI_upp = mymod.compute_ME_CI_boot(X, Y, X0, w=[10], R=10)
 
 # Obtain predictions for the function at the evaluation points
 Y_pred = mymod.predict(X0)
-
-# clear the tensorflow session.
-clear_session()
 
 
 ###############################################################################
