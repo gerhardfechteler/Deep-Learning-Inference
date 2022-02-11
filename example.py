@@ -84,5 +84,3 @@ plt.legend()
 
 plt.tight_layout()
 
-
-
