@@ -25,8 +25,10 @@ class MLP():
     The methods compute_ME, compute_ME_std and predict can be used only after 
     running the method train. The method compute_ME_CI can be directly used.
     """
+    
     def __init__(self):
         pass
+    
     def train(self, X, Y, w=[100], verbose=0,
               l2_penalty = 0.001):
         """
@@ -58,8 +60,8 @@ class MLP():
         Returns
         -------
         None.
-
         """
+        
         # Store data as attributes
         self.X = X
         self.Y = Y
@@ -156,6 +158,7 @@ class MLP():
             k - input dimension
             m - number of evaluation points
         """
+        
         # rescale evaluation points
         X0 = (X0 - self.X_mean) / self.X_std
         # input dimension and number of evaluation points
@@ -318,6 +321,7 @@ class MLP():
             k - input dimension
             m - number of evaluation points
         """
+        
         n = X.shape[0]
         ME_list = []
         ME_std_list = []
