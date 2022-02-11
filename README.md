@@ -1,7 +1,7 @@
 # Deep-Learning-Inference
 Marginal Effect based Inference in the Deep Learning Framework
 
-The module MLP_module contains the class MLP, which is an implements the algorithms presented in the paper "Marginal Effect based Inference in the Deep Learning Framework", soon available on arXiv. 
+The module MLP_module contains the class MLP, which is an implements the algorithms presented in the paper "Marginal Effect based Inference in the Deep Learning Framework", soon available on arXiv. The link will be added here.
 
 Class for training a MLP, making predictions, computing marginal effects, computing the asymptotic conditional marginal effect distribution and estimating confidence intervals for the marginal effects. 
 
