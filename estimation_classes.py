@@ -5,7 +5,6 @@ from keras.backend import clear_session
 from numpy.linalg import inv
 from scipy.stats import norm
 from scipy.optimize import bisect
-# from bisect import bisect
 
 class MLP():
     def __init__(self):
