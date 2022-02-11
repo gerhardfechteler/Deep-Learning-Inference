@@ -7,29 +7,54 @@ from scipy.stats import norm
 from scipy.optimize import bisect
 
 class MLP():
+    """
+    Class for training a MLP, making predictions, computing marginal effects,
+    computing the asymptotic conditional marginal effect distribution and 
+    estimating confidence intervals for the marginal effects. 
+    
+    Methods available to the user:
+    - train: trains an MLP with the specified architecture and given data.
+    - compute_ME: computes the marginal effects after training.
+    - compute_ME_std: computes the asymptotic conditional standard deviations
+        of the marginal effect estimator after training.
+    - predict: predicts the dependent varibles for provided regressors
+    - compute_ME_CI_boot: trains an MLP with the specified architecture and 
+        given data, returns the average marginal effects and their confidence
+        intervals.
+    
+    The methods compute_ME, compute_ME_std and predict can be used only after 
+    running the method train. The method compute_ME_CI can be directly used.
+    """
     def __init__(self):
         pass
     def train(self, X, Y, w=[100], verbose=0,
-              activations = None,
               l2_penalty = 0.001):
         """
         train(self, X, Y, d=3, w=[100], verbose=0)
         
-        Creates and trains a MLP based on regressors X and targets Y.
+        Creates and trains a MLP of the specified architecture based on 
+        regressors X and targets Y.
         
         Parameters
         ----------
-        X : TYPE
-            DESCRIPTION.
-        Y : TYPE
-            DESCRIPTION.
-        d : TYPE, optional
-            DESCRIPTION. The default is 3.
-        w : TYPE, optional
-            DESCRIPTION. The default is [100].
-        verbose : TYPE, optional
-            DESCRIPTION. The default is 0.
-
+        X : numpy.ndarray
+            (n,k) array of regressors
+            n - sample size
+            k - input dimension (number of regressors)
+        Y : numpy.ndarray
+            (n,wd) array of dependent variables
+            n - sample size
+            kp - output dimension (number of dependent variables)
+        w : list of int, optional
+            list of hidden layer widths for the MLP. E.g. [5,5] indicates a MLP
+            with two hidden layers of width 5 each. The number of total layers 
+            in the MLP is d=len(w)+2. The The default is [100].
+        verbose : int, optional
+            Level of detail of console output during training. 0=no output, 1=
+            training progess output. The default is 0.
+        l2_penalty : float, optional
+            l2 penalty parameter for kernel regularization. The default is 0.001.
+        
         Returns
         -------
         None.
@@ -42,9 +67,9 @@ class MLP():
         # check dimension
         d = len(w) + 2
         
-        # numer of observations and width vector
-        n, w1 = X.shape
-        wd = Y.shape[1]
+        # number of observations and width vector
+        n, w1 = X.shape # w1=k is the input dimension and width of layer 1.
+        wd = Y.shape[1] # wd=kp is the output dimension and width of layer d.
         self.w = [w1] + [w[i] for i in range(len(w))] + [wd]
         
         # initialize network
@@ -111,21 +136,22 @@ class MLP():
     
     def compute_ME(self, X0):
         """
-        compute_ME(model, x)
+        compute_ME(self, X0)
         
-        Compute the Marginal Effects of a Multilayer Perceptron.
+        Compute the Marginal Effects of the trained MLP. Only for use after 
+        training, i.e. having called the method "train".
         
         Parameters
         ----------
-        x0: (m, k) array
-            Evaluation points for the marginal effects
+        x0 : np.ndarray
+            (m,k) array of evaluation points for the marginal effects
             k - input dimension
             m - number of evaluation points
                 
         Returns
         -------
-        ME: (m,kp,k) array
-            Marginal effects for each evaluation point
+        ME : np.ndarray
+            (m,kp,k) array of marginal effects for each evaluation point
             kp - output dimension
             k - input dimension
             m - number of evaluation points
@@ -184,24 +210,27 @@ class MLP():
         """
         compute_ME(model, x)
         
-        Compute the standard deviations for the Marginal Effects of a 
-        Multilayer Perceptron.
+        Compute the standard deviations for the Marginal Effects of the trained
+        MLP. Technically, this is the standard deviation of the estimated 
+        asymptotic marginal effect distribution, conditional on convergence to
+        the respective local minimum. Only for use after training, i.e. having 
+        called the method "train".
         
         Parameters
         ----------
-        X0: (m, k) array
-            Evaluation points for the marginal effects
+        x0 : np.ndarray
+            (m,k) array of evaluation points for the marginal effects
             k - input dimension
             m - number of evaluation points
                 
         Returns
         -------
-        ME_std: (m,kp,k) array
-                Standard deviations of marginal effects for each evaluation 
-                point
-                kp - output dimension
-                k - input dimension
-                m - number of evaluation points
+        ME_std : np.ndarray
+            (m,kp,k) array of standard deviations of marginal effects for 
+            each evaluation point
+            kp - output dimension
+            k - input dimension
+            m - number of evaluation points
         """
         
         # obtain the matrices to construct the asymptotic covariance matrix 
@@ -229,6 +258,66 @@ class MLP():
         return ME_std * self.Y_std.reshape((-1,1)) / self.X_std
     
     def compute_ME_CI_boot(self, X, Y, X0, w=[100], B=3, alpha=0.05, verbose=1):
+        """
+        compute_ME_CI_boot(self, X, Y, X0, w=[100], B=3, alpha=0.05, verbose=1)
+        
+        Compute the marginal effects and estimated confidence intervals for the
+        MLP with the given architecture and for specified evaluation points.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            (n,w1) array of regressors
+            n - sample size
+            w1 - number of regressors
+        Y : numpy.ndarray
+            (n,wd) array of dependent variables
+            n - sample size
+            wd - number of dependent variables
+        x0 : np.ndarray
+            (m,k) array of evaluation points for the marginal effects
+            k - input dimension
+            m - number of evaluation points
+        w : list of int, optional
+            list of hidden layer widths for the MLP. E.g. [5,5] indicates a MLP
+            with two hidden layers of width 5 each. The The default is [100]
+        B : int, optional
+            Number of re-estimation steps. The default is 3.
+        alpha : float, optional
+            Significance level for the confidence intervals. The default is 0.05
+        verbose : int, optional
+            Level of detail of console output during estimation. 0=no output, 
+            1=progress updates during the re-estimation steps. The default is 0.
+
+        Returns
+        -------
+        ME_mean : np.ndarray
+            (m,kp,k) array of marginal effects for each evaluation point, 
+            averaged over all B re-estimations. E.g. ME_mean[a,b,c] is the 
+            average estimated marginal effect of regressor c on dependent 
+            variable b, evaluated at regressor vector X0[a].
+            kp - output dimension
+            k - input dimension
+            m - number of evaluation points
+        ME_CI_low : np.ndarray
+            (m,kp,k) array of lower limits of the marginal effect confidence
+            invervals for each evaluation point. E.g. ME_CI_low[a,b,c] is the 
+            lower limit of the confidence interval for the marginal effect of 
+            regressor c on dependent variable b, evaluated at regressor vector
+            X0[a].
+            kp - output dimension
+            k - input dimension
+            m - number of evaluation points
+        ME_CI_upp : np.ndarray
+            (m,kp,k) array of upper limits of the marginal effect confidence
+            invervals for each evaluation point. E.g. ME_CI_low[a,b,c] is the 
+            upper limit of the confidence interval for the marginal effect of 
+            regressor c on dependent variable b, evaluated at regressor vector
+            X0[a].
+            kp - output dimension
+            k - input dimension
+            m - number of evaluation points
+        """
         n = X.shape[0]
         ME_list = []
         ME_std_list = []
@@ -257,7 +346,8 @@ class MLP():
         ME_CI_low = np.zeros((m,kp,k))
         ME_CI_upp = np.zeros((m,kp,k))
         
-        print('Computing quantiles: ', end='')
+        if verbose==1:
+            print('Computing quantiles: ', end='')
         for i in range(m):
             for j in range(kp):
                 for l in range(k):
@@ -270,15 +360,49 @@ class MLP():
                     ME_CI_upp[i,j,l] = bisect(lambda z: F(z) - (1-alpha/2), 
                                               np.min(ME_) - 2*np.max(ME_std_),
                                               np.max(ME_) + 2*np.max(ME_std_))
-        print('completed.')
+        if verbose==1:
+            print('completed.')
         
         self.ME_list = ME_list
         self.ME_std_list = ME_std_list
         
-        return np.mean(ME_list,0), ME_CI_low, ME_CI_upp
+        ME_mean = np.mean(ME_list,0)
+        
+        return ME_mean, ME_CI_low, ME_CI_upp
         
         
     def __compute_dM__(self, X0, verbose=0):
+        """
+        __compute_dM__(self, X0, verbose=0)
+        
+        Computes the derivative of the vectorized marginal effects with respect 
+        to the parameter vector of the model "self.MLP" for the evaluation 
+        points provided in X0.
+
+        Parameters
+        ----------
+        x0 : np.ndarray
+            (m,k) array of evaluation points for the marginal effects
+            k - input dimension
+            m - number of evaluation points
+        verbose : int, optional
+            Level of detail on the progress outputted in the console. 0=no
+            output, 1=outputs the evaluation point currently working on. The 
+            default is 0.
+
+        Returns
+        -------
+        dM : np.ndarray
+            (m, k*kp, w1*w2+w2+...+wd-1*wd+wd) array of derivatives of the 
+            marginal effects with respect to the parameter vector, consisting 
+            of the weight matrices with shape (wi,wi+1) and bias vectors for 
+            each evaluation point specified in X0.
+            m - number of evaluation points
+            k - input dimension (number of regressors)
+            kp - output dimension (number of dependent variables)
+            wi - width of layer i
+            d - depth of the MLP
+        """
         
         model = self.MLP
         X0 = (X0 - self.X_mean) / self.X_std
@@ -485,6 +609,32 @@ class MLP():
     
     
     def __compute_V_theta__(self, verbose=0):
+        """
+        __compute_V_theta__(self, verbose=0)
+        
+        Estimates the asymptotic conditional covariance matrix of the parameter 
+        vector of the estimated MLP based on the observations used for training.
+
+        Parameters
+        ----------
+        verbose : int, optional
+            Indicates whether details on the progress shall be outputted in the
+            console. 0=no output, 1=outputs the observation number working on 
+            and the details on robustifying the inverse second order derivative
+            of loss with respect to parameters. The default is 0.
+
+        Returns
+        -------
+        V_theta : np.ndarray
+            (w1*w2+w2+...+wd-1*wd+wd, w1*w2+w2+...+wd-1*wd+wd) array of the 
+            estimated ansymptotic conditional covariance matrix of the 
+            parameter vector.
+            m - number of evaluation points
+            k - input dimension (number of regressors)
+            kp - output dimension (number of dependent variables)
+            wi - width of layer i
+            d - depth of the MLP
+        """
         
         model = self.MLP
         X = (self.X - self.X_mean) / self.X_std
@@ -583,7 +733,9 @@ class MLP():
                 # forward propagation
                 s[j+1] = W[j] @ z[j] + b[j] 
                 # activation
-                z[j+1], dsig[j+1], d2sig[j+1] = self.__activate__(s[j+1], activation[j+1], return_derivatives = 2)
+                z[j+1], dsig[j+1], d2sig[j+1] = self.__activate__(s[j+1], 
+                                                                  activation[j+1], 
+                                                                  return_derivatives = 2)
                 
                 # Each entry of the list is a new list, containing the derivatives
                 # with respect to lower layers. I.e: dz_5/dz_2 = dzdz[5][2]
@@ -755,54 +907,59 @@ class MLP():
         """
         activate(s, activation)
         
-        Activate the weighted output from the last layer.
+        Activates a layer's input s with a given activation function and 
+        returns the output z.
         
         Parameters
         ----------
-        s: (nl, 1) array
-            non-activated weighted sum of outputs from last layer
-            nl - number of neurons in the layer
-        activation: str
+        s : np.ndarray
+            (w, 1) array, non-activated weighted sum of outputs from last layer
+            w - number of neurons in the layer
+        activation : str
             Activation function that shall be applied. Should be one of
             - 'linear'
             - 'tanh'
-        return_derivatives: int, optional
-            States the order, up to which derivatives are obtained. 
-            Should be one of
-            - 0 (no derivative returned, only activated layer output)
-            - 1 (first oder derivative of activation computed)
-            - 2 (first and second order derivative ar computed)
+        return_derivatives : int, optional
+            States the order, up to which derivatives are returned. Should be 
+            one of
+            - 0 (only layer output)
+            - 1 (layer output and first oder derivative)
+            - 2 (layer ourput, first and second order derivative)
+            The default is 0.
         
         Returns
         -------
-        z: (nl, 1) array
-            activated output of the layer
-            nl - number of neurons in the layer
-        dsig: (nl, nl) array, optional 
-            (returned if return_derivatives >=1)
-            First order derivative of activation function, evaluated at input s
-            nl - number of neurons in the layer
-        d2sig: (nl, nl, nl) array, optional 
-            (returned if return_derivatives ==2)
-            Second order derivative of activation function, evaluated at input s
+        z : np.ndarray
+            (w,1) array, activated output z=sigma(s) of the layer
+            w - number of neurons in the layer
+        dsig : np.ndarray, returned if return_derivatives >=1
+            (w,w) array, first order derivative dsigma/ds of activation 
+            function, evaluated at input s. dsig[a,b] denotes the derivative of
+            layer output z[a] with respect to layer input s[b]
+            w - number of neurons in the layer
+        d2sig : np.ndarray, returned if return_derivatives ==2
+            (w,w,w) array, second order derivative d2sigma/dsds' of activation 
+            function, evaluated at input s. d2sig[a,b,c] denotes the second 
+            order derivative of output z[a] with respect to inputs s[b] and s[c].
+            w - number of neurons in the layer
         """
         
         # number of neurons in the layer
-        nl = s.shape[0]
+        w = s.shape[0]
         
         if activation == 'linear':
             # for a linear activation function, the output is just the weighted
             # inputs and the derivative is an identity matrix
             z = s 
-            dsig = np.eye(nl)
-            d2sig = np.zeros((nl, nl, nl))
+            dsig = np.eye(w)
+            d2sig = np.zeros((w, w, w))
         elif activation == 'tanh':
             # under tanh activation, the derivative is a diagonal matrix of the 
             # 1/cosh**2 elements.
             z = np.tanh(s)
             dsig = np.diag((1/(np.cosh(s)**2)).reshape((-1)))
-            d2sig = np.zeros((nl,nl,nl))
-            for i in range(nl):
+            d2sig = np.zeros((w,w,w))
+            for i in range(w):
                 d2sig[i,i,i] = -2 * np.sinh(s[i]) / np.cosh(s[i])**3
         else:
             raise NameError('Activation function not supported.')
@@ -814,7 +971,7 @@ class MLP():
         elif return_derivatives == 2:
             return z, dsig, d2sig
         else:
-            raise NameError('return_derivatives must be 0,1 or 2.')
+            raise NameError('return_derivatives must be 0, 1 or 2.')
             
     def __compute_loss__(self, y, yhat, loss, return_derivatives=2):
         """
@@ -824,51 +981,68 @@ class MLP():
         
         Parameters
         ----------
-        y: (d, 1) array
-            Observed dependent variables (targets)
-            d - output dimension
-        yhat: (d, 1) array
-            Predicted dependent variables (outputs)
-            d - output dimension
-        loss: str
-            Loss function that shall be computed. 
-            Should be one of
+        y : np.ndarray
+            (kp, 1) array of observed dependent variables (targets)
+            kp - output dimension
+        yhat : np.ndarray
+            (kp, 1) array of predicted dependent variables (outputs)
+            kp - output dimension
+        loss : str
+            Loss function that shall be computed. Should be one of
             - 'mse'
-        return_derivatives: int, optional
-            States the order, up to which derivatives are obtained. 
+        return_derivatives : int, optional
+            States the order, up to which derivatives are returned. 
             Should be one of
-            - 0 (no derivative returned, only activated layer output)
-            - 1 (first oder derivative of activation computed)
-            - 2 (first and second order derivative ar computed)
+            - 0 (only loss)
+            - 1 (loss and first oder derivative of loss w.r.t. yhat)
+            - 2 (loss, first and second order derivative of loss w.r.t. yhat)
+            The default is 2.
         
         Returns
         -------
-        l: numpy.float
+        l : numpy.float64
             loss
-        dl: (d, 1) array
-            derivative of loss w.r.t. yhat
-            d - output dimension
-        d2l: (d, d) array
-            2nd order derivative of loss w.r.t. yhat
-            d - output dimension
+        dl : np.ndarray
+            (kp, 1) array, derivative of loss w.r.t. yhat
+            kp - output dimension
+        d2l : np.ndarray
+            (kp, kp) array, 2nd order derivative of loss w.r.t. yhat
+            kp - output dimension
         """
         
         # output dimension
-        d = y.shape[0]
+        kp = y.shape[0]
         
         if loss == 'mse':
             l = np.sum((y - yhat)**2)
             dl = -2 * (y - yhat)
-            d2l = 2 * np.eye(d)
+            d2l = 2 * np.eye(kp)
             return l, dl, d2l
         else:
             raise NameError('Loss not supported.')
     
     def predict(self, X_raw):
         """
-        X_raw: np.ndarray
-            (T, k) array of observed series
+        predict(self, X_raw)
+        
+        Predicted dependent variables for the evaluation points in X_raw. Only 
+        for use after training, i.e. having called the method "train".
+
+        Parameters
+        ----------
+        X_raw : np.ndarray
+            (m,k) array of evaluation points
+            m - number of evaluation points
+            k - input dimension
+
+        Returns
+        -------
+        Y_pred_rescaled : np.ndarray
+            (m,kp) array of predicted dependent variables
+            m - number of evaluation points
+            kp - output dimension
         """
+
         # obtain length and number of series
         n, w1 = X_raw.shape
         
@@ -878,7 +1052,10 @@ class MLP():
         # predict output
         Y_pred = self.MLP.predict(X)
         
+        # rescale output
+        Y_pred_rescaled = Y_pred * self.Y_std + self.Y_mean
+        
         # return rescaled variables
-        return Y_pred * self.Y_std + self.Y_mean
+        return Y_pred_rescaled
 
 
