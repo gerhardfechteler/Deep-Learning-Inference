@@ -1,5 +1,4 @@
 # Deep-Learning-Inference
-Marginal Effect based Inference in the Deep Learning Framework
 
 The module MLP_module implements the algorithms presented in the paper "Marginal Effect based Inference in the Deep Learning Framework", soon available on arXiv. The link will be added here.
 
