@@ -12,6 +12,6 @@ Methods available to the user:
 - predict: predicts the dependent varibles for provided regressors
 - compute_ME_CI_boot: trains an MLP with the specified architecture and given data, returns the average marginal effects and their confidence intervals.
 
-The methods compute_ME, compute_ME_std and predict can be used only after running the method train. The method compute_ME_CI can be directly used.
+The methods compute_ME, compute_ME_std and predict can be used only after running the method train. The method compute_ME_CI can be used directly.
 
 The file example.py shows how to use the module.
